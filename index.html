@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Метеоритный защитник — ВСЕ БАГИ ИСПРАВЛЕНЫ</title>
+    <style>
+        * { user-select: none; -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 20% 30%, #020a12, #000000); display: flex; justify-content: center; align-items: center; font-family: 'Courier New', monospace; padding: 20px; }
+        .game-wrapper { display: flex; flex-direction: column; align-items: center; }
+        .game-container { background: #000000aa; border-radius: 42px; padding: 20px; backdrop-filter: blur(2px); box-shadow: 0 25px 40px black; }
+        canvas { display: block; margin: 0 auto; border-radius: 24px; box-shadow: 0 0 0 3px #2a4c7a, 0 15px 30px black; cursor: none; }
+        .menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .menu-panel { background: linear-gradient(145deg, #0a0f1f, #05070f); border-radius: 60px; padding: 40px 50px; text-align: center; border: 2px solid #3a6ea5; box-shadow: 0 0 50px rgba(0,100,200,0.3); min-width: 400px; }
+        .menu-title { font-size: 2rem; color: #ffdd88; text-shadow: 0 0 15px #ffaa33; margin-bottom: 30px; }
+        .menu-btn { background: #1e3a5f; border: none; font-family: inherit; font-size: 1.3rem; font-weight: bold; padding: 12px 35px; margin: 10px 0; width: 100%; border-radius: 60px; color: white; cursor: pointer; transition: 0.1s; }
+        .menu-btn:hover { background: #2e5a8f; transform: scale(1.02); }
+        .menu-btn.secondary { background: #2a2a4a; }
+        .back-btn { background: #442200; font-size: 1rem; padding: 8px 20px; margin-top: 15px; }
+        .skin-grid { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin: 20px 0; }
+        .skin-card { background: #111122; border-radius: 30px; padding: 15px; width: 150px; text-align: center; cursor: pointer; border: 2px solid #3a6ea5; transition: 0.1s; }
+        .skin-card:hover { transform: scale(1.03); border-color: #ffaa44; }
+        .skin-card.selected { border-color: #ffaa44; background: #1a2a3a; box-shadow: 0 0 20px #ffaa44; }
+        .skin-card.locked { opacity: 0.6; cursor: not-allowed; }
+        .skin-preview { width: 60px; height: 60px; margin: 0 auto 10px; border-radius: 15px; }
+        .skin-name { font-size: 1rem; font-weight: bold; }
+        .skin-price { font-size: 0.8rem; color: #ffcc77; }
+        .close-menu { position: absolute; top: 20px; right: 30px; font-size: 2rem; cursor: pointer; background: none; border: none; color: white; }
+        .top-panel { display: flex; justify-content: space-between; align-items: center; margin: 12px 0 10px; background: #0a0f1cee; backdrop-filter: blur(4px); border-radius: 60px; padding: 6px 20px; color: #c0e4ff; font-weight: bold; gap: 15px; flex-wrap: wrap; }
+        .score, .health, .level { font-size: 1.2rem; }
+        .menu-button, .restart-btn, .bomb-btn, .ultra-btn, .shield-btn, .quantum-btn { background: #2a4b6e; border: none; font-family: inherit; font-weight: bold; font-size: 0.7rem; padding: 4px 10px; border-radius: 40px; color: white; cursor: pointer; }
+        .bomb-btn { background: #aa4422; }
+        .ultra-btn { background: #8844aa; }
+        .shield-btn { background: #44aa88; }
+        .quantum-btn { background: #2288aa; }
+        .bomb-btn.disabled, .ultra-btn.disabled, .shield-btn.disabled, .quantum-btn.disabled { background: #442211; cursor: not-allowed; opacity: 0.6; }
+        .shop-panel { background: #05070cd9; backdrop-filter: blur(12px); border-radius: 36px; padding: 12px 18px; margin-top: 14px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 1000px; min-height: 100px; }
+        .upgrade-card { background: #19232fd9; border-radius: 25px; padding: 6px 10px; min-width: 100px; text-align: center; color: #ffe3b0; font-size: 0.65rem; font-weight: bold; cursor: pointer; transition: 0.07s; border: 1px solid #7c9bc0; }
+        .upgrade-card:hover { background: #2d405be6; transform: scale(0.97); }
+        .upgrade-card.disabled { opacity: 0.5; cursor: not-allowed; }
+        .upgrade-name { font-size: 0.7rem; }
+        .upgrade-price { color: #ffcc77; }
+        .controls { font-size: 0.6rem; background: #000000aa; border-radius: 36px; padding: 5px 15px; margin-top: 8px; text-align: center; }
+        .level-badge { background: #2a4b6e; border-radius: 30px; padding: 3px 12px; }
+        .level-5-badge { background: #880000; box-shadow: 0 0 20px #ff0000; animation: pulse 0.5s infinite; }
+        @keyframes pulse { 0% { opacity: 0.7; } 100% { opacity: 1; } }
+        @media (max-width: 850px) { .menu-panel { padding: 20px 25px; min-width: 280px; } .menu-btn { font-size: 1rem; padding: 8px 20px; } .upgrade-card { min-width: 85px; } .top-panel { gap: 5px; } .score, .health, .level { font-size: 0.85rem; } }
+    </style>
+</head>
+<body>
+<div class="game-wrapper">
+    <div class="game-container">
+        <canvas id="gameCanvas" width="1000" height="650"></canvas>
+        <div class="top-panel">
+            <div class="score">💎 ОЧКИ: <span id="scoreValue">0</span></div>
+            <div class="health">🛡️ ПРОЧНОСТЬ: <span id="healthValue">10</span> / <span id="maxHealthValue">10</span></div>
+            <div class="level"><span class="level-badge" id="levelBadge">🌟 УРОВЕНЬ <span id="levelValue">1</span></span></div>
+            <button class="menu-button" id="menuButton">📋 МЕНЮ</button>
+            <button class="restart-btn" id="restartButton">🔄 НОВЫЙ ПОЛЁТ</button>
+        </div>
+        <div style="display: flex; justify-content: center; gap: 5px; margin-bottom: 8px; flex-wrap: wrap;">
+            <button class="bomb-btn" id="bombButton">💣 БОМБА</button>
+            <button class="ultra-btn" id="ultraButton">💥 СВЕРХНОВАЯ</button>
+            <button class="shield-btn" id="shieldButton">🛡️ АБС. ЩИТ</button>
+            <button class="quantum-btn" id="quantumButton">🌌 КВАНТ. РАЗРЫВ</button>
+        </div>
+        <div class="shop-panel" id="shopPanel"></div>
+        <div class="controls">
+            🖱️ МЫШЬ / ◀ ▶ | 🔫 ПРОБЕЛ | 💣 B | 💥 N | 🛡️ V | 🌌 G | 📋 ESC
+        </div>
+    </div>
+</div>
+
+<div id="mainMenu" class="menu-overlay" style="display: flex;">
+    <div class="menu-panel">
+        <div class="menu-title">⚡ МЕТЕОРИТНЫЙ ЗАЩИТНИК ⚡</div>
+        <button class="menu-btn" id="playBtn">🚀 ИГРАТЬ</button>
+        <button class="menu-btn secondary" id="skinsBtn">🎨 СКИНЫ</button>
+        <button class="menu-btn secondary" id="multiplayerBtn">🌐 МУЛЬТИПЛЕЕР (СКОРО)</button>
+    </div>
+</div>
+
+<div id="skinsMenu" class="menu-overlay" style="display: none;">
+    <div class="menu-panel">
+        <button class="close-menu" id="closeSkinsBtn">✖</button>
+        <div class="menu-title">🎨 МАГАЗИН СКИНОВ</div>
+        <div class="skin-grid" id="skinGrid"></div>
+        <button class="menu-btn back-btn" id="backToMainFromSkins">◀ НАЗАД</button>
+    </div>
+</div>
+
+<script>
+(function(){
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const SAVE_KEY = 'meteorDefenderFinalFixed';
+    
+    let score = 0, currentHealth = 10, maxHealth = 10, gameRunning = true, currentGameLevel = 1;
+    let bossActive = false, bossShieldActive = false;
+    let bossRockets = [], blackHoles = [];
+    let shipX = canvas.width / 2, SHIP_Y = canvas.height - 60, SHIP_RADIUS = 16;
+    let bullets = [], plasmaBullets = [], rockets = [], droneBullets = [];
+    let meteors = [], explosions = [], floatingTexts = [];
+    let shootCooldown = 0, plasmaCooldown = 0, homingCooldown = 0, autoLaserTimer = 0, droneCooldown = 0;
+    let bombCooldown = 0, ultraCooldown = 0, shieldCooldown = 0, quantumCooldown = 0;
+    let shieldActive = false, shieldTimer = 0, regenCounter = 0, spawnCounter = 0;
+    let vampirismActive = false, piercingActive = false, starDustActive = false, chainLightningActive = false;
+    let slowActive = false, slowTimer = 0;
+    
+    // Константы
+    const BULLET_DAMAGE = 10, PLASMA_DAMAGE = 30, ROCKET_DAMAGE = 25, LASER_DAMAGE = 10;
+    const UPGRADED_PLASMA_DAMAGE = 45, DRONE_DAMAGE = 8, CHAIN_LIGHTNING_DAMAGE = 50;
+    const METEOR_BASE_SPEED = 0.7;
+    
+    // Боссы
+    const BOSS_2_HP = 500, BOSS_2_REWARD = 800;
+    const BOSS_3_HP = 800, BOSS_3_REWARD = 1500;
+    const BOSS_4_HP = 1500, BOSS_4_REWARD = 3000;
+    const BOSS_5_HP = 3000, BOSS_5_REWARD = 10000;
+    
+    // Улучшения
+    let fireRateLevel = 0, doubleShot = false, tripleShot = false, bulletSpeedLevel = 0, armorLevel = 0, regenLevel = 0;
+    let laserLevel = 0, magnetLevel = 0, shieldLevel = 0, homingLevel = 0, doubleScoreLevel = 0, plasmaLevel = 0;
+    let upgradedPlasmaLevel = 0, megaShieldLevel = 0, turboRegenLevel = 0, atomicBombLevel = 0, criticalLevel = 0, droneLevel = 0;
+    let supersonicLevel = 0, vampirismLevel = 0, piercingLevel = 0, absoluteShieldLevel = 0, starDustLevel = 0, supernovaLevel = 0;
+    let quantumRiftLevel = 0, blackHoleLevel = 0, divineBeamLevel = 0, infiniteShieldLevel = 0, chainLightningLevel = 0, curseLevel = 0;
+    
+    let currentFireDelay = 15, currentBulletSpeed = -7, scoreMultiplier = 1, currentPlasmaDamage = PLASMA_DAMAGE;
+    
+    let ownedSkins = ['default'];
+    let activeSkin = 'default';
+    const skins = {
+        default: { name: '🔵 СТАНДАРТ', price: 0, color1: '#3c78b0', color2: '#b0e0ff', wingColor: '#5a8ec0', engineColor: '#ff8833' },
+        phantom: { name: '🔴 ФАНТОМ', price: 5000, color1: '#aa2244', color2: '#ff6688', wingColor: '#cc3366', engineColor: '#ff44ff' },
+        golden: { name: '💛 ЗОЛОТОЙ', price: 15000, color1: '#ccaa33', color2: '#ffdd88', wingColor: '#dd9944', engineColor: '#ffaa44' }
+    };
+    
+    // Цены
+    const FIRE_RATE_PRICES = [45,85,150,240,360];
+    const DOUBLE_SHOT_PRICE = 120, TRIPLE_SHOT_PRICE = 280;
+    const BULLET_SPEED_PRICES = [70,140,230];
+    const ARMOR_PRICES = [90,170,270];
+    const REGEN_PRICES = [110,200,320];
+    const LASER_PRICES = [200,350];
+    const MAGNET_PRICES = [180,320];
+    const SHIELD_PRICES = [250,400];
+    const HOMING_PRICES = [300,500];
+    const DOUBLE_SCORE_PRICES = [400,700];
+    const PLASMA_PRICES = [450,750];
+    const UPGRADED_PLASMA_PRICES = [800,1200];
+    const MEGA_SHIELD_PRICES = [600,1000];
+    const TURBO_REGEN_PRICES = [500,900];
+    const ATOMIC_BOMB_PRICES = [1000,1500];
+    const CRITICAL_PRICES = [700,1100];
+    const DRONE_PRICES = [650,1050];
+    const SUPERSONIC_PRICES = [1500,2500];
+    const VAMPIRISM_PRICES = [1200,2000];
+    const PIERCING_PRICES = [1800,3000];
+    const ABSOLUTE_SHIELD_PRICES = [2000,3500];
+    const STAR_DUST_PRICES = [1500,2500];
+    const SUPERNOVA_PRICES = [2500,4000];
+    const QUANTUM_RIFT_PRICES = [5000,8000];
+    const BLACK_HOLE_PRICES = [6000,10000];
+    const DIVINE_BEAM_PRICES = [8000,13000];
+    const INFINITE_SHIELD_PRICES = [7000,12000];
+    const CHAIN_LIGHTNING_PRICES = [5500,9000];
+    const CURSE_PRICES = [6500,11000];
+    
+    function saveGame() {
+        const gameState = { score, currentGameLevel, ownedSkins, activeSkin,
+            fireRateLevel, doubleShot, tripleShot, bulletSpeedLevel, armorLevel, regenLevel,
+            laserLevel, magnetLevel, shieldLevel, homingLevel, doubleScoreLevel, plasmaLevel,
+            upgradedPlasmaLevel, megaShieldLevel, turboRegenLevel, atomicBombLevel, criticalLevel, droneLevel,
+            supersonicLevel, vampirismLevel, piercingLevel, absoluteShieldLevel, starDustLevel, supernovaLevel,
+            quantumRiftLevel, blackHoleLevel, divineBeamLevel, infiniteShieldLevel, chainLightningLevel, curseLevel
+        };
+        localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
+    }
+    
+    function loadGame() {
+        const saved = localStorage.getItem(SAVE_KEY);
+        if(saved){
+            try{
+                const data = JSON.parse(saved);
+                score = data.score || 0;
+                currentGameLevel = data.currentGameLevel || 1;
+                ownedSkins = data.ownedSkins || ['default'];
+                activeSkin = data.activeSkin || 'default';
+                fireRateLevel = data.fireRateLevel || 0; doubleShot = data.doubleShot || false; tripleShot = data.tripleShot || false;
+                bulletSpeedLevel = data.bulletSpeedLevel || 0; armorLevel = data.armorLevel || 0; regenLevel = data.regenLevel || 0;
+                laserLevel = data.laserLevel || 0; magnetLevel = data.magnetLevel || 0; shieldLevel = data.shieldLevel || 0;
+                homingLevel = data.homingLevel || 0; doubleScoreLevel = data.doubleScoreLevel || 0; plasmaLevel = data.plasmaLevel || 0;
+                upgradedPlasmaLevel = data.upgradedPlasmaLevel || 0; megaShieldLevel = data.megaShieldLevel || 0;
+                turboRegenLevel = data.turboRegenLevel || 0; atomicBombLevel = data.atomicBombLevel || 0;
+                criticalLevel = data.criticalLevel || 0; droneLevel = data.droneLevel || 0;
+                supersonicLevel = data.supersonicLevel || 0; vampirismLevel = data.vampirismLevel || 0;
+                piercingLevel = data.piercingLevel || 0; absoluteShieldLevel = data.absoluteShieldLevel || 0;
+                starDustLevel = data.starDustLevel || 0; supernovaLevel = data.supernovaLevel || 0;
+                quantumRiftLevel = data.quantumRiftLevel || 0; blackHoleLevel = data.blackHoleLevel || 0;
+                divineBeamLevel = data.divineBeamLevel || 0; infiniteShieldLevel = data.infiniteShieldLevel || 0;
+                chainLightningLevel = data.chainLightningLevel || 0; curseLevel = data.curseLevel || 0;
+                applyUpgrades();
+                updateUI();
+                return true;
+            } catch(e){ console.error(e); }
+        }
+        return false;
+    }
+    
+    function applyUpgrades(){
+        let reduction = fireRateLevel * 1.6 + (supersonicLevel>0?2*supersonicLevel:0);
+        currentFireDelay = Math.max(3, Math.floor(15 - reduction));
+        let speedIncrease = bulletSpeedLevel * 1.3 + (supersonicLevel>0?1.5*supersonicLevel:0);
+        currentBulletSpeed = -7 - speedIncrease;
+        let newMaxHealth = 10 + armorLevel*2 + (megaShieldLevel>0?5*megaShieldLevel:0) + (absoluteShieldLevel>0?3*absoluteShieldLevel:0) + (infiniteShieldLevel>0?10*infiniteShieldLevel:0);
+        if(newMaxHealth !== maxHealth){
+            maxHealth = newMaxHealth;
+            if(currentHealth > maxHealth) currentHealth = maxHealth;
+            document.getElementById('maxHealthValue').innerText = maxHealth;
+        }
+        scoreMultiplier = doubleScoreLevel + 1;
+        currentPlasmaDamage = upgradedPlasmaLevel>0?UPGRADED_PLASMA_DAMAGE:PLASMA_DAMAGE;
+        vampirismActive = vampirismLevel>0;
+        piercingActive = piercingLevel>0;
+        starDustActive = starDustLevel>0;
+        chainLightningActive = chainLightningLevel>0;
+    }
+    
+    function updateUI(){
+        document.getElementById('scoreValue').innerText = score;
+        document.getElementById('healthValue').innerText = currentHealth;
+        document.getElementById('maxHealthValue').innerText = maxHealth;
+        document.getElementById('levelValue').innerText = currentGameLevel;
+        const lb = document.getElementById('levelBadge');
+        lb.className = 'level-badge';
+        if(currentGameLevel===5) lb.classList.add('level-5-badge');
+        else if(currentGameLevel===4) lb.style.background = "#aa44aa";
+        else if(currentGameLevel===3) lb.style.background = "#aa6600";
+        else lb.style.background = "#2a4b6e";
+        updateShopButtons();
+    }
+    
+    function addFloatingText(x,y,text,color="#ffff88"){ floatingTexts.push({x,y,text,life:40,color}); }
+    function updateFloatingTexts(){ for(let i=0;i<floatingTexts.length;i++) if(--floatingTexts[i].life<=0) floatingTexts.splice(i--,1); else floatingTexts[i].y-=0.8; }
+    function drawFloatingTexts(){ for(let ft of floatingTexts){ ctx.font="bold 14px monospace"; ctx.fillStyle=ft.color; ctx.fillText(ft.text, ft.x-ft.text.length*3, ft.y-8); } }
+    
+    function addScore(amount,x,y){
+        let final = Math.floor(amount * scoreMultiplier);
+        if(criticalLevel>0 && Math.random()<0.15*criticalLevel){ final*=2; addFloatingText(x,y,"CRITICAL!","#ffaa44"); }
+        score += final;
+        addFloatingText(x,y,`+${final}`,"#ffff88");
+        if(vampirismActive && vampirismLevel>0){
+            let heal = Math.floor(final * 0.1 * vampirismLevel);
+            if(heal>0 && currentHealth<maxHealth){
+                currentHealth = Math.min(maxHealth, currentHealth + heal);
+                addFloatingText(x,y,`❤️ +${heal}`, "#ff8888");
+                updateUI();
+            }
+        }
+        updateUI();
+        saveGame();
+        checkLevelUp();
+    }
+    
+    function resetGameSession(){
+        gameRunning = true;
+        currentHealth = maxHealth;
+        meteors = []; bullets = []; plasmaBullets = []; rockets = []; bossRockets = []; blackHoles = [];
+        droneBullets = []; explosions = []; floatingTexts = [];
+        shootCooldown = 0; plasmaCooldown = 0; homingCooldown = 0; autoLaserTimer = 0; 
+        bombCooldown = 0; ultraCooldown = 0; shieldCooldown = 0; quantumCooldown = 0;
+        shieldActive = false; bossActive = false; bossShieldActive = false; slowActive = false;
+        shipX = canvas.width/2;
+        for(let i=0;i<3;i++) spawnMeteor();
+        updateUI(); updateSpecialButtons();
+        addFloatingText(canvas.width/2, canvas.height/2, "🔄 НОВЫЙ ПОЛЁТ! УЛУЧШЕНИЯ СОХРАНЕНЫ", "#88ff88");
+        saveGame();
+    }
+    
+    function checkLevelUp(){
+        if(currentGameLevel===1){
+            let allMax = fireRateLevel>=5 && bulletSpeedLevel>=3 && armorLevel>=3 && regenLevel>=3 && (doubleShot||tripleShot);
+            if(allMax){ levelUpTo(2); }
+        }
+        if(currentGameLevel===2){
+            let allMax = laserLevel>=2 && magnetLevel>=2 && shieldLevel>=2 && homingLevel>=2 && doubleScoreLevel>=2 && plasmaLevel>=2;
+            if(allMax){ levelUpTo(3); }
+        }
+        if(currentGameLevel===3){
+            let allMax = upgradedPlasmaLevel>=2 && megaShieldLevel>=2 && turboRegenLevel>=2 && atomicBombLevel>=2 && criticalLevel>=2 && droneLevel>=2;
+            if(allMax){ levelUpTo(4); }
+        }
+        if(currentGameLevel===4){
+            let allMax = supersonicLevel>=2 && vampirismLevel>=2 && piercingLevel>=2 && absoluteShieldLevel>=2 && starDustLevel>=2 && supernovaLevel>=2;
+            if(allMax){ levelUpTo(5); }
+        }
+    }
+    
+    function levelUpTo(level){
+        currentGameLevel = level;
+        addFloatingText(canvas.width/2, canvas.height/2, level===5?"👑 ПЕРЕХОД НА УРОВЕНЬ 5! 👑":`🌟 ПЕРЕХОД НА УРОВЕНЬ ${level}! 🌟`, "#ffaa44");
+        meteors = []; bossActive = false;
+        for(let i=0;i<3;i++) spawnMeteor();
+        saveGame();
+        updateUI();
+    }
+    
+    function getMeteorType(){
+        if(currentGameLevel===1) return 'normal';
+        if(currentGameLevel===2) return 'radioactive';
+        if(currentGameLevel===3) return 'metal';
+        if(currentGameLevel===4){
+            let r = Math.random();
+            if(r<0.35) return 'crystal';
+            if(r<0.55) return 'star';
+            if(r<0.75) return 'dark';
+            return 'normal';
+        }
+        if(currentGameLevel===5){
+            let r = Math.random();
+            if(r<0.2) return 'vortex';
+            if(r<0.4) return 'inferno';
+            if(r<0.6) return 'frost';
+            if(r<0.8) return 'electric';
+            return 'phantom';
+        }
+        return 'normal';
+    }
+    
+    function getMeteorMaxHp(type, isBoss){
+        if(isBoss){
+            if(currentGameLevel===2) return BOSS_2_HP;
+            if(currentGameLevel===3) return BOSS_3_HP;
+            if(currentGameLevel===4) return BOSS_4_HP;
+            if(currentGameLevel===5) return BOSS_5_HP;
+            return 200;
+        }
+        if(currentGameLevel===1) return 20;
+        if(currentGameLevel===2) return 50;
+        if(currentGameLevel===3) return 200;
+        if(currentGameLevel===4){
+            if(type==='crystal') return 300;
+            if(type==='star') return 400;
+            if(type==='dark') return 250;
+            return 150;
+        }
+        if(currentGameLevel===5){
+            if(type==='vortex') return 500;
+            if(type==='inferno') return 600;
+            if(type==='frost') return 450;
+            if(type==='electric') return 550;
+            return 400;
+        }
+        return 20;
+    }
+    
+    function anyBossIncoming(){ for(let m of meteors) if(m.isBoss) return true; return false; }
+    
+    function spawnMeteor(){
+        if(!bossActive && meteors.length===0 && !anyBossIncoming()){
+            if(currentGameLevel===2 && Math.random()<0.3){ spawnBoss(2); return; }
+            if(currentGameLevel===3 && Math.random()<0.25){ spawnBoss(3); return; }
+            if(currentGameLevel===4 && Math.random()<0.2){ spawnBoss(4); return; }
+            if(currentGameLevel===5 && Math.random()<0.15){ spawnBoss(5); return; }
+        }
+        if(bossActive) return;
+        let radius = 12 + Math.floor(Math.random() * 12);
+        let x = Math.random() * (canvas.width - 2*radius) + radius;
+        let type = getMeteorType();
+        let maxHp = getMeteorMaxHp(type, false);
+        meteors.push({ x, y: -radius, radius, speedY: METEOR_BASE_SPEED + Math.random()*0.4, type, isBoss: false, hp: maxHp, maxHp });
+    }
+    
+    function spawnBoss(level){
+        bossActive = true;
+        let radius = level===5 ? 75 + Math.floor(Math.random()*15) : (level===4?60+Math.random()*12 : (level===3?50+Math.random()*10 : 44+Math.random()*8));
+        let x = Math.random() * (canvas.width - 2*radius) + radius;
+        meteors.push({ x, y: -radius, radius, speedY: METEOR_BASE_SPEED * (level===5?0.2:(level===4?0.25:(level===3?0.3:0.35))), type: 'boss', isBoss: true, bossLevel: level, hp: getMeteorMaxHp('boss', true), maxHp: getMeteorMaxHp('boss', true), bossRocketCooldown: 0, bossShieldCooldown: 0, teleportCooldown: 0 });
+        let msg = level===5 ? "⚠️ ПОВЕЛИТЕЛЬ БЕЗДНЫ ПРИБЫВАЕТ! ⚠️" : (level===4?"⚠️ ЗВЁЗДНЫЙ КОЛОСС ПРИБЫВАЕТ! ⚠️":(level===3?"⚠️ ЖЕЛЕЗНЫЙ КОЛОСС ПРИБЫВАЕТ! ⚠️":"⚠️ ГИГАНТСКИЙ БОСС ПРИБЫВАЕТ! ⚠️"));
+        addFloatingText(canvas.width/2, canvas.height/2, msg, level===5?"#ff0000":"#ff4444");
+        document.getElementById('levelBadge').style.animation = "pulse 0.5s infinite";
+        setTimeout(() => { if(!bossActive) document.getElementById('levelBadge').style.animation = "none"; }, 8000);
+    }
+    
+    function damageMeteor(meteor, damage){
+        if(meteor.isBoss && bossShieldActive && meteor.bossLevel===5){
+            addFloatingText(meteor.x, meteor.y, "🛡️ БОСС-ЩИТ!", "#88aaff");
+            return false;
+        }
+        let finalDmg = damage;
+        if(criticalLevel>0 && Math.random()<0.1*criticalLevel){ finalDmg*=2; addFloatingText(meteor.x,meteor.y,"CRIT!","#ffaa44"); }
+        if(piercingActive && piercingLevel>0 && meteor.isBoss) finalDmg = Math.floor(finalDmg * (1 + piercingLevel * 0.2));
+        meteor.hp -= finalDmg;
+        addFloatingText(meteor.x,meteor.y,`-${finalDmg}`,"#ff8888");
+        if(meteor.hp<=0){
+            let reward = meteor.isBoss ? (meteor.bossLevel===2?BOSS_2_REWARD:(meteor.bossLevel===3?BOSS_3_REWARD:(meteor.bossLevel===4?BOSS_4_REWARD:BOSS_5_REWARD))) : (meteor.radius>18?25:15);
+            if(meteor.type==='crystal') reward *= 1.5;
+            if(meteor.type==='star') reward *= 2;
+            if(meteor.type==='vortex') reward *= 3;
+            if(meteor.type==='inferno') reward *= 4;
+            addScore(reward, meteor.x, meteor.y);
+            if(curseLevel>0 && !meteor.isBoss){
+                explosions.push({x:meteor.x,y:meteor.y,life:25});
+                for(let m of meteors) if(!m.isBoss) damageMeteor(m, 30);
+            }
+            if(starDustActive && starDustLevel>0 && !meteor.isBoss){
+                addFloatingText(meteor.x, meteor.y, "✨ ЗВЁЗДНАЯ ПЫЛЬ! ✨", "#ffaa88");
+                currentHealth = Math.min(maxHealth, currentHealth + 5);
+                updateUI();
+            }
+            explosions.push({x:meteor.x,y:meteor.y,life:meteor.isBoss?35:14});
+            let idx = meteors.indexOf(meteor);
+            if(idx!==-1) meteors.splice(idx,1);
+            if(meteor.isBoss){ bossActive = false; }
+            return true;
+        }
+        return false;
+    }
+    
+    function drawMeteor(m){
+        let radius = m.radius, x=m.x, y=m.y, hp=m.hp, maxHp=m.maxHp, isBoss=m.isBoss, bossLevel=m.bossLevel;
+        let spikes = isBoss ? (bossLevel===5?20:(bossLevel===4?18:16)) : (m.type==='vortex'?12:8+Math.floor(Math.random()*4));
+        let angleStep = (Math.PI*2)/spikes;
+        ctx.save();
+        ctx.shadowBlur = isBoss ? 35 : 15;
+        if(isBoss && bossLevel===5) ctx.shadowColor = "#ff0000";
+        else if(isBoss && bossLevel===4) ctx.shadowColor = "#ff44ff";
+        else if(isBoss && bossLevel===3) ctx.shadowColor = "#ff8844";
+        else if(isBoss) ctx.shadowColor = "#ff0000";
+        else if(m.type==='vortex') ctx.shadowColor = "#4488ff";
+        else if(m.type==='inferno') ctx.shadowColor = "#ff4400";
+        else if(m.type==='frost') ctx.shadowColor = "#44aaff";
+        else if(m.type==='electric') ctx.shadowColor = "#ffff00";
+        else if(m.type==='phantom') ctx.shadowColor = "#aa88ff";
+        else if(m.type==='star') ctx.shadowColor = "#44aaff";
+        else if(m.type==='crystal') ctx.shadowColor = "#ff44aa";
+        else if(m.type==='dark') ctx.shadowColor = "#440000";
+        else if(m.type==='metal') ctx.shadowColor = "#aaaaaa";
+        else if(m.type==='radioactive') ctx.shadowColor = "#00ff44";
+        else ctx.shadowColor = "#2a1a0a";
+        
+        ctx.beginPath();
+        for(let i=0;i<spikes;i++){
+            let angle=i*angleStep;
+            let rad = radius*(0.7+Math.sin(angle*3)*0.2+Math.cos(angle*2)*0.1);
+            let xOff=Math.cos(angle)*rad, yOff=Math.sin(angle)*rad;
+            if(i===0) ctx.moveTo(x+xOff,y+yOff);
+            else ctx.lineTo(x+xOff,y+yOff);
+        }
+        ctx.closePath();
+        
+        let grad;
+        if(isBoss && bossLevel===5) grad=ctx.createLinearGradient(x-radius/2,y-radius/2,x+radius/2,y+radius/2),grad.addColorStop(0,"#ff0000"),grad.addColorStop(1,"#440000");
+        else if(isBoss && bossLevel===4) grad=ctx.createLinearGradient(x-radius/2,y-radius/2,x+radius/2,y+radius/2),grad.addColorStop(0,"#ff44ff"),grad.addColorStop(1,"#8800aa");
+        else if(isBoss && bossLevel===3) grad=ctx.createLinearGradient(x-radius/2,y-radius/2,x+radius/2,y+radius/2),grad.addColorStop(0,"#cc8844"),grad.addColorStop(1,"#442200");
+        else if(isBoss) grad=ctx.createLinearGradient(x-radius/2,y-radius/2,x+radius/2,y+radius/2),grad.addColorStop(0,"#cc2222"),grad.addColorStop(1,"#440000");
+        else if(m.type==='vortex') grad=ctx.createLinearGradient(x-radius/2,y-radius/2,x+radius/2,y+radius/2),grad.addColorStop(0,"#4488ff"),grad.addColorStop(1,"#0044aa");
+        else if(m.type==='inferno') grad=ctx.createLinearGradient(x-radius/2,y-radius/2,x+radius/2,y+radius/2),grad.addColorStop(0,"#ff4400"),grad.addColorStop(1,"#aa2200");
+        else if(m.type==='frost') grad=ctx.createLinearGradient(x-radius/2,y-radius/2,x+radius/2,y+radius/2),grad.addColorStop(0,"#88ccff"),grad.addColorStop(1,"#2288aa");
+        else if(m.type==='electric') grad=ctx.createLinearGradient(x-radius/2,y-radius/2,x+radius/2,y+radius/2),grad.addColorStop(0,"#ffff44"),grad.addColorStop(1,"#aa8800");
+        else if(m.type==='phantom') grad=ctx.createLinearGradient(x-radius/2,y-radius/2,x+radius/2,y+radius/2),grad.addColorStop(0,"#aa88ff"),grad.addColorStop(1,"#5522aa");
+        else if(m.type==='star') grad=ctx.createLinearGradient(x-radius/2,y-radius/2,x+radius/2,y+radius/2),grad.addColorStop(0,"#44aaff"),grad.addColorStop(1,"#1155aa");
+        else if(m.type==='crystal') grad=ctx.createLinearGradient(x-radius/2,y-radius/2,x+radius/2,y+radius/2),grad.addColorStop(0,"#ff66cc"),grad.addColorStop(1,"#aa2288");
+        else if(m.type==='dark') grad=ctx.createLinearGradient(x-radius/2,y-radius/2,x+radius/2,y+radius/2),grad.addColorStop(0,"#333333"),grad.addColorStop(1,"#110000");
+        else if(m.type==='metal') grad=ctx.createLinearGradient(x-radius/2,y-radius/2,x+radius/2,y+radius/2),grad.addColorStop(0,"#aaaaaa"),grad.addColorStop(1,"#444444");
+        else if(m.type==='radioactive') grad=ctx.createLinearGradient(x-radius/2,y-radius/2,x+radius/2,y+radius/2),grad.addColorStop(0,"#88ff44"),grad.addColorStop(1,"#226600");
+        else grad=ctx.createLinearGradient(x-radius/2,y-radius/2,x+radius/2,y+radius/2),grad.addColorStop(0,"#7a5a4a"),grad.addColorStop(1,"#3a2a1e");
+        ctx.fillStyle=grad;
+        ctx.fill();
+        ctx.strokeStyle = isBoss ? "#ff8888" : "#2f2418";
+        ctx.lineWidth = isBoss?3:1;
+        ctx.stroke();
+        
+        let hpPercent=hp/maxHp, barWidth=radius*1.8, barHeight=isBoss?12:4, barX=x-barWidth/2, barY=y-radius-(isBoss?18:8);
+        ctx.fillStyle="#330000"; ctx.fillRect(barX,barY,barWidth,barHeight);
+        ctx.fillStyle=isBoss?"#ff0000":(m.type==='star'?"#44aaff":(m.type==='crystal'?"#ff66cc":(m.type==='dark'?"#ff3333":"#ff4444")));
+        ctx.fillRect(barX,barY,barWidth*hpPercent,barHeight);
+        if(isBoss){
+            ctx.font="bold 11px monospace";
+            ctx.fillStyle="#ffaa88";
+            ctx.fillText(`❤️ ${Math.floor(hp)}/${maxHp}`, x-40, y-radius-15);
+            ctx.font="bold 9px monospace";
+            ctx.fillStyle="#ffaa44";
+            ctx.fillText(bossLevel===5?"ПОВЕЛИТЕЛЬ БЕЗДНЫ":(bossLevel===4?"ЗВЁЗДНЫЙ КОЛОСС":(bossLevel===3?"ЖЕЛЕЗНЫЙ КОЛОСС":"ГИГАНТСКИЙ БОСС")), x-65, y-radius-25);
+        }
+        ctx.restore();
+    }
+    
+    function shoot(){
+        if(!gameRunning) return;
+        if(shootCooldown<=0){
+            let cx=shipX, cy=SHIP_Y-SHIP_RADIUS/1.3;
+            if(tripleShot){
+                bullets.push({x:cx-13,y:cy,radius:5,speedY:currentBulletSpeed,damage:BULLET_DAMAGE});
+                bullets.push({x:cx,y:cy-3,radius:5,speedY:currentBulletSpeed,damage:BULLET_DAMAGE});
+                bullets.push({x:cx+13,y:cy,radius:5,speedY:currentBulletSpeed,damage:BULLET_DAMAGE});
+            } else if(doubleShot){
+                bullets.push({x:cx-9,y:cy,radius:5,speedY:currentBulletSpeed,damage:BULLET_DAMAGE});
+                bullets.push({x:cx+9,y:cy,radius:5,speedY:currentBulletSpeed,damage:BULLET_DAMAGE});
+            } else {
+                bullets.push({x:cx,y:cy,radius:5,speedY:currentBulletSpeed,damage:BULLET_DAMAGE});
+            }
+            shootCooldown=currentFireDelay;
+        }
+        if((plasmaLevel>0||upgradedPlasmaLevel>0)&&plasmaCooldown<=0){
+            plasmaBullets.push({x:shipX,y:SHIP_Y-SHIP_RADIUS/1.5,radius:8,speedY:currentBulletSpeed*0.8,damage:currentPlasmaDamage});
+            plasmaCooldown=20-(plasmaLevel+upgradedPlasmaLevel)*2;
+        }
+    }
+    
+    function shootHomingRocket(){
+        if(!gameRunning || homingLevel===0 || homingCooldown>0 || meteors.length===0) return;
+        let closest=null, bestDist=Infinity;
+        for(let m of meteors){
+            let d=Math.hypot(shipX-m.x, SHIP_Y-m.y);
+            if(d<bestDist){ bestDist=d; closest=m; }
+        }
+        if(closest){
+            rockets.push({x:shipX,y:SHIP_Y-SHIP_RADIUS,target:closest,speed:5,radius:4,life:120,damage:ROCKET_DAMAGE});
+            homingCooldown=50;
+        }
+    }
+    
+    function updateRockets(){
+        for(let i=0;i<rockets.length;i++){
+            let r=rockets[i];
+            if(!r.target || r.target.y>canvas.height+100 || r.target.y<-100){ rockets.splice(i--,1); continue; }
+            let dx=r.target.x-r.x, dy=r.target.y-r.y, dist=Math.hypot(dx,dy);
+            if(dist<14){
+                damageMeteor(r.target, r.damage);
+                rockets.splice(i--,1);
+                continue;
+            }
+            let move=Math.min(r.speed, dist);
+            r.x+=(dx/dist)*move; r.y+=(dy/dist)*move;
+            if(--r.life<=0) rockets.splice(i--,1);
+        }
+        if(homingCooldown>0) homingCooldown--;
+    }
+    
+    function updateAutoLaser(){
+        if(laserLevel===0) return;
+        if(autoLaserTimer<=0){
+            if(meteors.length>0 && gameRunning){
+                let target=meteors[Math.floor(Math.random()*meteors.length)];
+                if(target){ damageMeteor(target, LASER_DAMAGE); addFloatingText(target.x,target.y,"⚡","#88ff88"); }
+            }
+            autoLaserTimer=35+(3-laserLevel)*5;
+        } else autoLaserTimer--;
+    }
+    
+    function updateDrone(){
+        if(droneLevel===0) return;
+        if(droneCooldown<=0){
+            droneBullets.push({x:shipX+(Math.random()-0.5)*40,y:SHIP_Y-20,radius:4,speedY:-6,damage:DRONE_DAMAGE});
+            droneCooldown=15-droneLevel*3;
+        } else droneCooldown--;
+        for(let i=0;i<droneBullets.length;i++) if((droneBullets[i].y+=droneBullets[i].speedY)+10<0||droneBullets[i].y-10>canvas.height) droneBullets.splice(i--,1);
+        for(let i=0;i<droneBullets.length;i++){
+            let d=droneBullets[i];
+            for(let j=0;j<meteors.length;j++){
+                if(Math.hypot(d.x-meteors[j].x, d.y-meteors[j].y)<d.radius+meteors[j].radius){
+                    damageMeteor(meteors[j], d.damage);
+                    droneBullets.splice(i--,1);
+                    break;
+                }
+            }
+        }
+    }
+    
+    function useAtomicBomb(){
+        if(atomicBombLevel===0){ addFloatingText(canvas.width/2, canvas.height/2, "❌ Бомба не куплена!", "#ff8888"); return; }
+        if(bombCooldown>0){ addFloatingText(canvas.width/2, canvas.height/2, `⏳ ${Math.ceil(bombCooldown/60)}с`, "#ffaa66"); return; }
+        if(!gameRunning) return;
+        let destroyed=0;
+        for(let m of meteors){
+            let reward = m.isBoss ? (m.bossLevel===2?BOSS_2_REWARD:(m.bossLevel===3?BOSS_3_REWARD:(m.bossLevel===4?BOSS_4_REWARD:BOSS_5_REWARD))) : (m.radius>18?25:15);
+            addScore(reward, m.x, m.y);
+            explosions.push({x:m.x,y:m.y,life:30});
+            destroyed++;
+        }
+        if(bossActive) onBossDefeated();
+        meteors = []; bossActive = false;
+        bombCooldown = 300;
+        addFloatingText(canvas.width/2, canvas.height/2-30, `💣 УНИЧТОЖЕНО ${destroyed} ЦЕЛЕЙ 💣`, "#ff8844");
+        updateSpecialButtons();
+        saveGame();
+    }
+    
+    function useSupernova(){
+        if(supernovaLevel===0){ addFloatingText(canvas.width/2, canvas.height/2, "❌ Сверхновая не куплена!", "#ff8888"); return; }
+        if(ultraCooldown>0){ addFloatingText(canvas.width/2, canvas.height/2, `⏳ ${Math.ceil(ultraCooldown/60)}с`, "#ffaa66"); return; }
+        if(!gameRunning) return;
+        let destroyed=0;
+        for(let m of meteors){
+            let reward = m.isBoss ? (m.bossLevel===2?BOSS_2_REWARD:(m.bossLevel===3?BOSS_3_REWARD:(m.bossLevel===4?BOSS_4_REWARD:BOSS_5_REWARD))) : (m.radius>18?25:15);
+            addScore(reward*2, m.x, m.y);
+            explosions.push({x:m.x,y:m.y,life:40});
+            destroyed++;
+        }
+        if(bossActive) onBossDefeated();
+        meteors = []; bossActive = false;
+        ultraCooldown = 400;
+        addFloatingText(canvas.width/2, canvas.height/2-30, `💥 СВЕРХНОВАЯ! +${destroyed} ЦЕЛЕЙ 💥`, "#ff88ff");
+        updateSpecialButtons();
+        saveGame();
+    }
+    
+    function useAbsoluteShield(){
+        if(absoluteShieldLevel===0){ addFloatingText(canvas.width/2, canvas.height/2, "❌ Абсолютный щит не куплен!", "#ff8888"); return; }
+        if(shieldCooldown>0){ addFloatingText(canvas.width/2, canvas.height/2, `⏳ ${Math.ceil(shieldCooldown/60)}с`, "#ffaa66"); return; }
+        if(!gameRunning) return;
+        shieldActive = true;
+        shieldTimer = 180;
+        addFloatingText(canvas.width/2, canvas.height/2, "🛡️ АБСОЛЮТНЫЙ ЩИТ АКТИВИРОВАН! (3 сек)", "#88ffaa");
+        updateSpecialButtons();
+        saveGame();
+    }
+    
+    function useQuantumRift(){
+        if(quantumRiftLevel===0){ addFloatingText(canvas.width/2, canvas.height/2, "❌ Квантовый разрыв не куплен!", "#ff8888"); return; }
+        if(quantumCooldown>0){ addFloatingText(canvas.width/2, canvas.height/2, `⏳ ${Math.ceil(quantumCooldown/60)}с`, "#ffaa66"); return; }
+        if(!gameRunning) return;
+        shipX = Math.random() * (canvas.width - 2*SHIP_RADIUS - 20) + SHIP_RADIUS + 10;
+        shipX = Math.min(Math.max(shipX, SHIP_RADIUS+20), canvas.width-SHIP_RADIUS-20);
+        addFloatingText(canvas.width/2, canvas.height/2, "🌌 КВАНТОВЫЙ РАЗРЫВ! 🌌", "#88aaff");
+        quantumCooldown = 240;
+        updateSpecialButtons();
+        saveGame();
+    }
+    
+    function useBlackHole(){
+        if(blackHoleLevel===0) return;
+        if(quantumCooldown>0) return;
+        blackHoles.push({ x: shipX, y: SHIP_Y, radius: 80, life: 120 });
+        quantumCooldown = 300;
+        addFloatingText(canvas.width/2, canvas.height/2, "🕳️ ЧЁРНАЯ ДЫРА! 🕳️", "#8844aa");
+        updateSpecialButtons();
+        saveGame();
+    }
+    
+    function useChainLightning(){
+        if(chainLightningLevel===0) return;
+        for(let i=0;i<meteors.length;i++){
+            for(let j=i+1;j<meteors.length;j++){
+                if(Math.hypot(meteors[i].x-meteors[j].x, meteors[i].y-meteors[j].y)<100){
+                    damageMeteor(meteors[i], CHAIN_LIGHTNING_DAMAGE);
+                    damageMeteor(meteors[j], CHAIN_LIGHTNING_DAMAGE);
+                }
+            }
+        }
+    }
+    
+    function onBossDefeated(){ 
+        bossActive = false; 
+        addFloatingText(canvas.width/2, canvas.height/2-40, "💀 БОСС ПОВЕРЖЕН! 💀", "#ffaa44");
+        document.getElementById('levelBadge').style.animation = "none";
+        saveGame();
+    }
+    
+    function updateSpecialButtons(){
+        const bombBtn=document.getElementById('bombButton'), ultraBtn=document.getElementById('ultraButton'), shieldBtn=document.getElementById('shieldButton'), quantumBtn=document.getElementById('quantumButton');
+        if(atomicBombLevel===0) bombBtn.classList.add('disabled'); else if(bombCooldown>0) bombBtn.classList.add('disabled'); else bombBtn.classList.remove('disabled');
+        if(supernovaLevel===0) ultraBtn.classList.add('disabled'); else if(ultraCooldown>0) ultraBtn.classList.add('disabled'); else ultraBtn.classList.remove('disabled');
+        if(absoluteShieldLevel===0) shieldBtn.classList.add('disabled'); else if(shieldCooldown>0) shieldBtn.classList.add('disabled'); else shieldBtn.classList.remove('disabled');
+        if(quantumRiftLevel===0) quantumBtn.classList.add('disabled'); else if(quantumCooldown>0) quantumBtn.classList.add('disabled'); else quantumBtn.classList.remove('disabled');
+    }
+    
+    function drawSpaceship(x,y,r){
+        const skin = skins[activeSkin] || skins.default;
+        ctx.save();
+        ctx.shadowBlur=8;
+        ctx.beginPath();
+        if(currentGameLevel===5){
+            ctx.moveTo(x,y-r*1.7); ctx.lineTo(x-r*1.3,y+r*0.3); ctx.lineTo(x-r*1.8,y+r*0.7);
+            ctx.lineTo(x-r*0.9,y+r*0.9); ctx.lineTo(x,y+r*1.3); ctx.lineTo(x+r*0.9,y+r*0.9);
+            ctx.lineTo(x+r*1.8,y+r*0.7); ctx.lineTo(x+r*1.3,y+r*0.3);
+        } else if(currentGameLevel===4){
+            ctx.moveTo(x,y-r*1.6); ctx.lineTo(x-r*1.2,y+r*0.3); ctx.lineTo(x-r*1.7,y+r*0.7);
+            ctx.lineTo(x-r*0.8,y+r*0.9); ctx.lineTo(x,y+r*1.2); ctx.lineTo(x+r*0.8,y+r*0.9);
+            ctx.lineTo(x+r*1.7,y+r*0.7); ctx.lineTo(x+r*1.2,y+r*0.3);
+        } else if(currentGameLevel===3){
+            ctx.moveTo(x,y-r*1.5); ctx.lineTo(x-r*1.1,y+r*0.3); ctx.lineTo(x-r*1.6,y+r*0.7);
+            ctx.lineTo(x-r*0.7,y+r*0.9); ctx.lineTo(x,y+r*1.1); ctx.lineTo(x+r*0.7,y+r*0.9);
+            ctx.lineTo(x+r*1.6,y+r*0.7); ctx.lineTo(x+r*1.1,y+r*0.3);
+        } else if(currentGameLevel===2){
+            ctx.moveTo(x,y-r*1.4); ctx.lineTo(x-r*1.0,y+r*0.3); ctx.lineTo(x-r*1.5,y+r*0.7);
+            ctx.lineTo(x-r*0.7,y+r*0.8); ctx.lineTo(x,y+r*1.1); ctx.lineTo(x+r*0.7,y+r*0.8);
+            ctx.lineTo(x+r*1.5,y+r*0.7); ctx.lineTo(x+r*1.0,y+r*0.3);
+        } else {
+            ctx.moveTo(x,y-r*1.3); ctx.lineTo(x-r*0.9,y+r*0.4); ctx.lineTo(x-r*1.4,y+r*0.8);
+            ctx.lineTo(x-r*0.6,y+r*0.9); ctx.lineTo(x,y+r*1.2); ctx.lineTo(x+r*0.6,y+r*0.9);
+            ctx.lineTo(x+r*1.4,y+r*0.8); ctx.lineTo(x+r*0.9,y+r*0.4);
+        }
+        ctx.closePath();
+        let grad=ctx.createLinearGradient(x-10,y-12,x+12,y+18);
+        grad.addColorStop(0,skin.color2); grad.addColorStop(0.6,skin.color1);
+        ctx.fillStyle=grad; ctx.fill();
+        ctx.fillStyle=skin.wingColor;
+        ctx.beginPath(); ctx.moveTo(x-r*1.3,y+r*0.2); ctx.lineTo(x-r*2.2,y+r*0.7); ctx.lineTo(x-r*1.5,y+r*0.5); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(x+r*1.3,y+r*0.2); ctx.lineTo(x+r*2.2,y+r*0.7); ctx.lineTo(x+r*1.5,y+r*0.5); ctx.fill();
+        ctx.fillStyle=skin.engineColor;
+        ctx.beginPath(); ctx.ellipse(x,y+r*1.2,r*0.5,r*0.25,0,0,Math.PI*2); ctx.fill();
+        if(plasmaLevel>0||upgradedPlasmaLevel>0){
+            ctx.fillStyle=upgradedPlasmaLevel>0?"#ff8844":"#44aaff";
+            ctx.fillRect(x-8,y-14,16,8);
+        }
+        if(tripleShot){
+            ctx.fillStyle="#ffaa44";
+            ctx.fillRect(x-16,y-8,5,10); ctx.fillRect(x-3,y-12,6,14); ctx.fillRect(x+11,y-8,5,10);
+        } else if(doubleShot){
+            ctx.fillStyle="#ffaa44";
+            ctx.fillRect(x-12,y-7,5,10); ctx.fillRect(x+7,y-7,5,10);
+        } else {
+            ctx.fillStyle="#ffaa44";
+            ctx.fillRect(x-4,y-10,8,12);
+        }
+        if(shieldActive){
+            ctx.beginPath(); ctx.arc(x, y, r+10, 0, Math.PI*2);
+            ctx.strokeStyle = "#88ffaa"; ctx.lineWidth = 3; ctx.stroke();
+        }
+        if(infiniteShieldLevel>0){
+            ctx.beginPath(); ctx.arc(x, y, r+6, 0, Math.PI*2);
+            ctx.strokeStyle = "#aaffff"; ctx.lineWidth = 2; ctx.stroke();
+        }
+        ctx.beginPath(); ctx.arc(x,y-r*0.2,r*0.4,0,Math.PI*2); ctx.fillStyle="#aaf0ff"; ctx.fill();
+        ctx.restore();
+    }
+    
+    function updateShopButtons(){
+        const panel = document.getElementById('shopPanel');
+        if(!panel) return;
+        panel.innerHTML = '';
+        let items = [];
+        if(currentGameLevel===1){
+            items = [
+                { id:'fireRate', name:'🔫 СКОРОСТРЕЛЬНОСТЬ', level: fireRateLevel, max:5, price: FIRE_RATE_PRICES[fireRateLevel] },
+                { id:'doubleShot', name:'⚡ ДВОЙНАЯ ПУШКА', level: doubleShot?1:0, max:1, price: DOUBLE_SHOT_PRICE, disabled: tripleShot },
+                { id:'tripleShot', name:'💥 ТРОЙНАЯ ПУШКА', level: tripleShot?1:0, max:1, price: TRIPLE_SHOT_PRICE, disabled: doubleShot },
+                { id:'bulletSpeed', name:'🚀 БЫСТРЫЕ ПУЛИ', level: bulletSpeedLevel, max:3, price: BULLET_SPEED_PRICES[bulletSpeedLevel] },
+                { id:'armor', name:'🛡️ БРОНЯ', level: armorLevel, max:3, price: ARMOR_PRICES[armorLevel] },
+                { id:'regen', name:'💚 РЕГЕНЕРАЦИЯ', level: regenLevel, max:3, price: REGEN_PRICES[regenLevel] }
+            ];
+        } else if(currentGameLevel===2){
+            items = [
+                { id:'plasma', name:'🔵 ПЛАЗМЕННАЯ ПУШКА', level: plasmaLevel, max:2, price: PLASMA_PRICES[plasmaLevel] },
+                { id:'laser', name:'⚡ АВТОЛАЗЕР', level: laserLevel, max:2, price: LASER_PRICES[laserLevel] },
+                { id:'magnet', name:'🧲 МАГНИТ', level: magnetLevel, max:2, price: MAGNET_PRICES[magnetLevel] },
+                { id:'shield', name:'🛡️ РАДИОАКТИВНЫЙ ЩИТ', level: shieldLevel, max:2, price: SHIELD_PRICES[shieldLevel] },
+                { id:'homing', name:'🎯 САМОНАВОДЯЩИЕСЯ РАКЕТЫ', level: homingLevel, max:2, price: HOMING_PRICES[homingLevel] },
+                { id:'doubleScore', name:'💎 УДВОЕНИЕ ОЧКОВ', level: doubleScoreLevel, max:2, price: DOUBLE_SCORE_PRICES[doubleScoreLevel] }
+            ];
+        } else if(currentGameLevel===3){
+            items = [
+                { id:'upgradedPlasma', name:'🔥 УЛУЧШЕННАЯ ПЛАЗМА', level: upgradedPlasmaLevel, max:2, price: UPGRADED_PLASMA_PRICES[upgradedPlasmaLevel] },
+                { id:'megaShield', name:'🛡️ МЕГАЩИТ', level: megaShieldLevel, max:2, price: MEGA_SHIELD_PRICES[megaShieldLevel] },
+                { id:'turboRegen', name:'💚 ТУРБОРЕГЕНЕРАЦИЯ', level: turboRegenLevel, max:2, price: TURBO_REGEN_PRICES[turboRegenLevel] },
+                { id:'atomicBomb', name:'💣 АТОМНАЯ БОМБА', level: atomicBombLevel, max:2, price: ATOMIC_BOMB_PRICES[atomicBombLevel] },
+                { id:'critical', name:'⭐ КРИТИЧЕСКИЙ УРОН', level: criticalLevel, max:2, price: CRITICAL_PRICES[criticalLevel] },
+                { id:'drone', name:'🤖 ДРОН-ПОМОЩНИК', level: droneLevel, max:2, price: DRONE_PRICES[droneLevel] }
+            ];
+        } else if(currentGameLevel===4){
+            items = [
+                { id:'supersonic', name:'⚡ СВЕРХЗВУК', level: supersonicLevel, max:2, price: SUPERSONIC_PRICES[supersonicLevel] },
+                { id:'vampirism', name:'💀 ВАМПИРИЗМ', level: vampirismLevel, max:2, price: VAMPIRISM_PRICES[vampirismLevel] },
+                { id:'piercing', name:'🔮 ПРОБИВАНИЕ', level: piercingLevel, max:2, price: PIERCING_PRICES[piercingLevel] },
+                { id:'absoluteShield', name:'🛡️ АБСОЛЮТНЫЙ ЩИТ', level: absoluteShieldLevel, max:2, price: ABSOLUTE_SHIELD_PRICES[absoluteShieldLevel] },
+                { id:'starDust', name:'⭐ ЗВЁЗДНАЯ ПЫЛЬ', level: starDustLevel, max:2, price: STAR_DUST_PRICES[starDustLevel] },
+                { id:'supernova', name:'💥 СВЕРХНОВАЯ', level: supernovaLevel, max:2, price: SUPERNOVA_PRICES[supernovaLevel] }
+            ];
+        } else {
+            items = [
+                { id:'quantumRift', name:'🌌 КВАНТОВЫЙ РАЗРЫВ', level: quantumRiftLevel, max:2, price: QUANTUM_RIFT_PRICES[quantumRiftLevel] },
+                { id:'blackHole', name:'🕳️ ЧЁРНАЯ ДЫРА', level: blackHoleLevel, max:2, price: BLACK_HOLE_PRICES[blackHoleLevel] },
+                { id:'divineBeam', name:'✨ БОЖЕСТВЕННЫЙ ЛУЧ', level: divineBeamLevel, max:2, price: DIVINE_BEAM_PRICES[divineBeamLevel] },
+                { id:'infiniteShield', name:'🛡️ БЕСКОНЕЧНЫЙ ЩИТ', level: infiniteShieldLevel, max:2, price: INFINITE_SHIELD_PRICES[infiniteShieldLevel] },
+                { id:'chainLightning', name:'⚡ МОЛНИЯ ЗЕВСА', level: chainLightningLevel, max:2, price: CHAIN_LIGHTNING_PRICES[chainLightningLevel] },
+                { id:'curse', name:'💀 ПРОКЛЯТИЕ', level: curseLevel, max:2, price: CURSE_PRICES[curseLevel] }
+            ];
+        }
+        for(let it of items){
+            const price = it.price;
+            const card = document.createElement('div');
+            card.className = 'upgrade-card';
+            let priceText = (price !== undefined && price !== null) ? price : 'MAX';
+            let isMax = it.level >= it.max;
+            let isDisabled = it.disabled === true;
+            if(isMax) priceText = '✅ MAX';
+            if(isDisabled) priceText = '🔒 ЗАНЯТО';
+            card.innerHTML = `<div class="upgrade-name">${it.name}</div><div class="upgrade-level">ур. ${it.level}/${it.max}</div><div class="upgrade-price">💎 ${priceText}</div>`;
+            if(!isMax && !isDisabled && typeof price === 'number'){
+                card.onclick = (e) => { e.stopPropagation(); buyUpgrade(it.id); };
+                if(score < price) card.style.opacity = "0.5";
+            } else { card.style.opacity = "0.6"; card.style.cursor = "default"; }
+            panel.appendChild(card);
+        }
+    }
+    
+    function buyUpgrade(type){
+        let price;
+        switch(type){
+            case 'fireRate': if(fireRateLevel>=5) return false; price=FIRE_RATE_PRICES[fireRateLevel]; if(score>=price){ score-=price; fireRateLevel++; applyUpgrades(); updateUI(); saveGame(); checkLevelUp(); return true; } break;
+            case 'doubleShot': if(doubleShot||tripleShot) return false; if(score>=DOUBLE_SHOT_PRICE){ score-=DOUBLE_SHOT_PRICE; doubleShot=true; updateUI(); saveGame(); checkLevelUp(); return true; } break;
+            case 'tripleShot': if(tripleShot||doubleShot) return false; if(score>=TRIPLE_SHOT_PRICE){ score-=TRIPLE_SHOT_PRICE; tripleShot=true; updateUI(); saveGame(); checkLevelUp(); return true; } break;
+            case 'bulletSpeed': if(bulletSpeedLevel>=3) return false; price=BULLET_SPEED_PRICES[bulletSpeedLevel]; if(score>=price){ score-=price; bulletSpeedLevel++; applyUpgrades(); updateUI(); saveGame(); checkLevelUp(); return true; } break;
+            case 'armor': if(armorLevel>=3) return false; price=ARMOR_PRICES[armorLevel]; if(score>=price){ score-=price; armorLevel++; applyUpgrades(); updateUI(); saveGame(); checkLevelUp(); return true; } break;
+            case 'regen': if(regenLevel>=3) return false; price=REGEN_PRICES[regenLevel]; if(score>=price){ score-=price; regenLevel++; updateUI(); saveGame(); checkLevelUp(); return true; } break;
+            case 'laser': if(laserLevel>=2) return false; price=LASER_PRICES[laserLevel]; if(score>=price){ score-=price; laserLevel++; updateUI(); saveGame(); checkLevelUp(); return true; } break;
+            case 'magnet': if(magnetLevel>=2) return false; price=MAGNET_PRICES[magnetLevel]; if(score>=price){ score-=price; magnetLevel++; updateUI(); saveGame(); checkLevelUp(); return true; } break;
+            case 'shield': if(shieldLevel>=2) return false; price=SHIELD_PRICES[shieldLevel]; if(score>=price){ score-=price; shieldLevel++; updateUI(); saveGame(); checkLevelUp(); return true; } break;
+            case 'homing': if(homingLevel>=2) return false; price=HOMING_PRICES[homingLevel]; if(score>=price){ score-=price; homingLevel++; updateUI(); saveGame(); checkLevelUp(); return true; } break;
+            case 'doubleScore': if(doubleScoreLevel>=2) return false; price=DOUBLE_SCORE_PRICES[doubleScoreLevel]; if(score>=price){ score-=price; doubleScoreLevel++; applyUpgrades(); updateUI(); saveGame(); checkLevelUp(); return true; } break;
+            case 'plasma': if(plasmaLevel>=2) return false; price=PLASMA_PRICES[plasmaLevel]; if(score>=price){ score-=price; plasmaLevel++; updateUI(); saveGame(); checkLevelUp(); return true; } break;
+            case 'upgradedPlasma': if(upgradedPlasmaLevel>=2) return false; price=UPGRADED_PLASMA_PRICES[upgradedPlasmaLevel]; if(score>=price){ score-=price; upgradedPlasmaLevel++; applyUpgrades(); updateUI(); saveGame(); return true; } break;
+            case 'megaShield': if(megaShieldLevel>=2) return false; price=MEGA_SHIELD_PRICES[megaShieldLevel]; if(score>=price){ score-=price; megaShieldLevel++; applyUpgrades(); updateUI(); saveGame(); return true; } break;
+            case 'turboRegen': if(turboRegenLevel>=2) return false; price=TURBO_REGEN_PRICES[turboRegenLevel]; if(score>=price){ score-=price; turboRegenLevel++; updateUI(); saveGame(); return true; } break;
+            case 'atomicBomb': if(atomicBombLevel>=2) return false; price=ATOMIC_BOMB_PRICES[atomicBombLevel]; if(score>=price){ score-=price; atomicBombLevel++; updateUI(); saveGame(); updateSpecialButtons(); return true; } break;
+            case 'critical': if(criticalLevel>=2) return false; price=CRITICAL_PRICES[criticalLevel]; if(score>=price){ score-=price; criticalLevel++; applyUpgrades(); updateUI(); saveGame(); return true; } break;
+            case 'drone': if(droneLevel>=2) return false; price=DRONE_PRICES[droneLevel]; if(score>=price){ score-=price; droneLevel++; updateUI(); saveGame(); return true; } break;
+            case 'supersonic': if(supersonicLevel>=2) return false; price=SUPERSONIC_PRICES[supersonicLevel]; if(score>=price){ score-=price; supersonicLevel++; applyUpgrades(); updateUI(); saveGame(); return true; } break;
+            case 'vampirism': if(vampirismLevel>=2) return false; price=VAMPIRISM_PRICES[vampirismLevel]; if(score>=price){ score-=price; vampirismLevel++; applyUpgrades(); updateUI(); saveGame(); return true; } break;
+            case 'piercing': if(piercingLevel>=2) return false; price=PIERCING_PRICES[piercingLevel]; if(score>=price){ score-=price; piercingLevel++; applyUpgrades(); updateUI(); saveGame(); return true; } break;
+            case 'absoluteShield': if(absoluteShieldLevel>=2) return false; price=ABSOLUTE_SHIELD_PRICES[absoluteShieldLevel]; if(score>=price){ score-=price; absoluteShieldLevel++; applyUpgrades(); updateUI(); saveGame(); updateSpecialButtons(); return true; } break;
+            case 'starDust': if(starDustLevel>=2) return false; price=STAR_DUST_PRICES[starDustLevel]; if(score>=price){ score-=price; starDustLevel++; applyUpgrades(); updateUI(); saveGame(); return true; } break;
+            case 'supernova': if(supernovaLevel>=2) return false; price=SUPERNOVA_PRICES[supernovaLevel]; if(score>=price){ score-=price; supernovaLevel++; updateUI(); saveGame(); updateSpecialButtons(); return true; } break;
+            case 'quantumRift': if(quantumRiftLevel>=2) return false; price=QUANTUM_RIFT_PRICES[quantumRiftLevel]; if(score>=price){ score-=price; quantumRiftLevel++; updateUI(); saveGame(); updateSpecialButtons(); return true; } break;
+            case 'blackHole': if(blackHoleLevel>=2) return false; price=BLACK_HOLE_PRICES[blackHoleLevel]; if(score>=price){ score-=price; blackHoleLevel++; updateUI(); saveGame(); return true; } break;
+            case 'divineBeam': if(divineBeamLevel>=2) return false; price=DIVINE_BEAM_PRICES[divineBeamLevel]; if(score>=price){ score-=price; divineBeamLevel++; updateUI(); saveGame(); return true; } break;
+            case 'infiniteShield': if(infiniteShieldLevel>=2) return false; price=INFINITE_SHIELD_PRICES[infiniteShieldLevel]; if(score>=price){ score-=price; infiniteShieldLevel++; applyUpgrades(); updateUI(); saveGame(); return true; } break;
+            case 'chainLightning': if(chainLightningLevel>=2) return false; price=CHAIN_LIGHTNING_PRICES[chainLightningLevel]; if(score>=price){ score-=price; chainLightningLevel++; applyUpgrades(); updateUI(); saveGame(); return true; } break;
+            case 'curse': if(curseLevel>=2) return false; price=CURSE_PRICES[curseLevel]; if(score>=price){ score-=price; curseLevel++; updateUI(); saveGame(); return true; } break;
+        }
+        alert("Не хватает очков!");
+        return false;
+    }
+    
+    function renderSkinShop(){
+        const grid=document.getElementById('skinGrid');
+        grid.innerHTML='';
+        for(let [id,skin] of Object.entries(skins)){
+            const owned=ownedSkins.includes(id);
+            const active=activeSkin===id;
+            const card=document.createElement('div');
+            card.className=`skin-card ${!owned?'locked':''} ${active?'selected':''}`;
+            card.innerHTML=`<div class="skin-preview" style="background:linear-gradient(135deg,${skin.color1},${skin.color2});border-radius:15px;"></div>
+                <div class="skin-name">${skin.name}</div>
+                <div class="skin-price">${owned?(active?'✅ ИСПОЛЬЗУЕТСЯ':'В СОБСТВЕННОСТИ'):`💎 ${skin.price} очков`}</div>`;
+            if(!owned){
+                card.onclick=()=>{
+                    if(score>=skin.price){
+                        score-=skin.price;
+                        ownedSkins.push(id);
+                        updateUI();
+                        saveGame();
+                        renderSkinShop();
+                        addFloatingText(canvas.width/2,canvas.height/2,`✅ Куплен ${skin.name}!`,"#88ff88");
+                    } else addFloatingText(canvas.width/2,canvas.height/2,`❌ Нужно ${skin.price} очков`,"#ff8888");
+                };
+            } else if(!active){
+                card.onclick=()=>{ activeSkin=id; updateUI(); saveGame(); renderSkinShop(); addFloatingText(canvas.width/2,canvas.height/2,`🎨 ${skin.name} активен!`,"#88ff88"); };
+            }
+            grid.appendChild(card);
+        }
+    }
+    
+    function initMenu(){
+        const mainMenu = document.getElementById('mainMenu');
+        const skinsMenu = document.getElementById('skinsMenu');
+        document.getElementById('playBtn').onclick=()=>{ mainMenu.style.display='none'; skinsMenu.style.display='none'; resetGameSession(); };
+        document.getElementById('skinsBtn').onclick=()=>{ mainMenu.style.display='none'; renderSkinShop(); skinsMenu.style.display='flex'; };
+        document.getElementById('multiplayerBtn').onclick=()=>alert('🌐 Мультиплеер скоро появится!');
+        document.getElementById('closeSkinsBtn').onclick=()=>{ skinsMenu.style.display='none'; mainMenu.style.display='flex'; };
+        document.getElementById('backToMainFromSkins').onclick=()=>{ skinsMenu.style.display='none'; mainMenu.style.display='flex'; };
+        document.getElementById('menuButton').onclick=()=>{ mainMenu.style.display='flex'; };
+        window.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ mainMenu.style.display='flex'; saveGame(); } });
+    }
+    
+    let targetX=shipX, mouseX=shipX;
+    const keys={ArrowLeft:false,ArrowRight:false};
+    canvas.addEventListener('mousemove',(e)=>{
+        const rect=canvas.getBoundingClientRect();
+        let canvasX=(e.clientX-rect.left)*(canvas.width/rect.width);
+        targetX=Math.min(Math.max(canvasX,SHIP_RADIUS+12),canvas.width-SHIP_RADIUS-12);
+        mouseX=targetX;
+    });
+    canvas.addEventListener('click',()=>shoot());
+    window.addEventListener('keydown',(e)=>{
+        if(e.key==='ArrowLeft'||e.key==='ArrowRight'){ keys[e.key]=true; e.preventDefault(); }
+        if(e.key===' '||e.key==='Space'){ shoot(); e.preventDefault(); }
+        if(e.key==='b'||e.key==='B'){ useAtomicBomb(); e.preventDefault(); }
+        if(e.key==='n'||e.key==='N'){ useSupernova(); e.preventDefault(); }
+        if(e.key==='v'||e.key==='V'){ useAbsoluteShield(); e.preventDefault(); }
+        if(e.key==='g'||e.key==='G'){ useQuantumRift(); e.preventDefault(); }
+    });
+    window.addEventListener('keyup',(e)=>{ if(e.key==='ArrowLeft'||e.key==='ArrowRight') keys[e.key]=false; });
+    
+    document.getElementById('restartButton').onclick=()=>{ resetGameSession(); };
+    document.getElementById('bombButton').onclick=()=>{ useAtomicBomb(); };
+    document.getElementById('ultraButton').onclick=()=>{ useSupernova(); };
+    document.getElementById('shieldButton').onclick=()=>{ useAbsoluteShield(); };
+    document.getElementById('quantumButton').onclick=()=>{ useQuantumRift(); };
+    
+    function gameUpdate(){
+        if(gameRunning){
+            if(shootCooldown>0) shootCooldown--;
+            if(plasmaCooldown>0) plasmaCooldown--;
+            if(bombCooldown>0){ bombCooldown--; updateSpecialButtons(); }
+            if(ultraCooldown>0){ ultraCooldown--; updateSpecialButtons(); }
+            if(shieldCooldown>0){ shieldCooldown--; updateSpecialButtons(); }
+            if(quantumCooldown>0){ quantumCooldown--; updateSpecialButtons(); }
+            if(shieldActive){ shieldTimer--; if(shieldTimer<=0) shieldActive=false; }
+            if(slowActive){ slowTimer--; if(slowTimer<=0) slowActive=false; }
+            
+            let move=0;
+            if(keys.ArrowLeft) move=-1;
+            if(keys.ArrowRight) move=1;
+            let newX;
+            if(move!==0) newX=shipX+move*7.5;
+            else{ let diff=targetX-shipX; newX=shipX+Math.sign(diff)*Math.min(Math.abs(diff),6.5); }
+            shipX=Math.min(Math.max(newX,SHIP_RADIUS+12),canvas.width-SHIP_RADIUS-12);
+            
+            for(let i=0;i<bullets.length;i++){ bullets[i].y+=bullets[i].speedY; if(bullets[i].y+12<0||bullets[i].y-12>canvas.height) bullets.splice(i--,1); }
+            for(let i=0;i<plasmaBullets.length;i++){ plasmaBullets[i].y+=plasmaBullets[i].speedY; if(plasmaBullets[i].y+15<0||plasmaBullets[i].y-15>canvas.height) plasmaBullets.splice(i--,1); }
+            
+            for(let i=0;i<meteors.length;i++){
+                let m=meteors[i];
+                m.y+=m.speedY;
+                if(m.y+m.radius>canvas.height+100){
+                    if(gameRunning && !shieldActive && !(infiniteShieldLevel>0)){
+                        let dmg=m.isBoss?(m.bossLevel===5?20:(m.bossLevel===4?15:(m.bossLevel===3?12:10))):(m.type==='inferno'?12:(m.type==='vortex'?10:8));
+                        if(infiniteShieldLevel>0) dmg = Math.max(1, Math.floor(dmg/2));
+                        currentHealth-=dmg;
+                        updateUI();
+                        if(currentHealth<=0) gameRunning=false;
+                    }
+                    if(m.isBoss) bossActive=false;
+                    meteors.splice(i--,1);
+                    continue;
+                }
+                if(Math.hypot(shipX-m.x, SHIP_Y-m.y)<SHIP_RADIUS+m.radius){
+                    if(gameRunning && !shieldActive && !(infiniteShieldLevel>0)){
+                        let dmg=m.isBoss?(m.bossLevel===5?30:(m.bossLevel===4?22:(m.bossLevel===3?18:15))):(m.type==='inferno'?18:(m.type==='vortex'?15:12));
+                        if(infiniteShieldLevel>0) dmg = Math.max(1, Math.floor(dmg/2));
+                        currentHealth-=dmg;
+                        if(m.type==='frost'){ slowActive=true; slowTimer=120; }
+                        updateUI();
+                        if(currentHealth<=0) gameRunning=false;
+                    }
+                    if(m.isBoss) bossActive=false;
+                    meteors.splice(i--,1);
+                }
+            }
+            
+            for(let i=0;i<bullets.length;i++){
+                for(let j=0;j<meteors.length;j++){
+                    if(Math.hypot(bullets[i].x-meteors[j].x, bullets[i].y-meteors[j].y)<bullets[i].radius+meteors[j].radius){
+                        damageMeteor(meteors[j], bullets[i].damage);
+                        if(!piercingActive && meteors[j].type!=='phantom') bullets.splice(i--,1);
+                        break;
+                    }
+                }
+            }
+            for(let i=0;i<plasmaBullets.length;i++){
+                for(let j=0;j<meteors.length;j++){
+                    if(Math.hypot(plasmaBullets[i].x-meteors[j].x, plasmaBullets[i].y-meteors[j].y)<plasmaBullets[i].radius+meteors[j].radius){
+                        damageMeteor(meteors[j], plasmaBullets[i].damage);
+                        if(!piercingActive && meteors[j].type!=='phantom') plasmaBullets.splice(i--,1);
+                        break;
+                    }
+                }
+            }
+            
+            let regenAmount = regenLevel + (turboRegenLevel>0?turboRegenLevel*2:0) + (infiniteShieldLevel>0?infiniteShieldLevel:0);
+            if(regenAmount>0 && currentHealth<maxHealth && regenCounter<=0){
+                currentHealth=Math.min(maxHealth,currentHealth+regenAmount);
+                updateUI();
+                regenCounter=80-turboRegenLevel*10;
+            }
+            if(regenCounter>0) regenCounter--;
+            
+            updateRockets();
+            updateAutoLaser();
+            updateDrone();
+            shootHomingRocket();
+            useChainLightning();
+            updateFloatingTexts();
+            for(let i=0;i<explosions.length;i++) if(--explosions[i].life<=0) explosions.splice(i--,1);
+            
+            if(spawnCounter<=0){
+                if(meteors.length<18 && !bossActive) spawnMeteor();
+                spawnCounter=Math.max(45,80-Math.floor(score/400));
+            } else spawnCounter--;
+            
+            // Обновление боссов
+            for(let m of meteors){
+                if(m.isBoss && m.bossLevel===5){
+                    if(m.bossShieldCooldown===undefined) m.bossShieldCooldown=0;
+                    if(m.bossShieldCooldown<=0){
+                        bossShieldActive = true;
+                        setTimeout(()=>{ bossShieldActive = false; }, 5000);
+                        m.bossShieldCooldown = 400;
+                        addFloatingText(m.x, m.y, "🛡️ ЩИТ ПОВЕЛИТЕЛЯ!", "#ff0000");
+                    } else m.bossShieldCooldown--;
+                    
+                    if(m.teleportCooldown===undefined) m.teleportCooldown=0;
+                    if(m.teleportCooldown<=0){
+                        m.x = Math.random() * (canvas.width - 2*m.radius) + m.radius;
+                        m.teleportCooldown = 300;
+                        addFloatingText(m.x, m.y, "🌀 ТЕЛЕПОРТАЦИЯ! 🌀", "#ff88ff");
+                    } else m.teleportCooldown--;
+                    
+                    if(m.bossRocketCooldown===undefined) m.bossRocketCooldown=0;
+                    if(m.bossRocketCooldown<=0 && !bossShieldActive){
+                        for(let r=0;r<5;r++){
+                            let angle = (Math.PI*2/5)*r + Math.random()*0.5;
+                            let speedX = Math.sin(angle)*1.8;
+                            let speedY = Math.cos(angle)*1.8;
+                            bossRockets.push({ x: m.x, y: m.y+m.radius/2, vx: speedX, vy: speedY, damage: 15, life: 150 });
+                        }
+                        m.bossRocketCooldown = 150;
+                    } else m.bossRocketCooldown--;
+                    
+                    if(blackHoleLevel>0 && Math.random()<0.005 && blackHoles.length<3){
+                        blackHoles.push({ x: m.x, y: m.y, radius: 60, life: 100 });
+                    }
+                }
+                if(m.isBoss && m.bossLevel===4){
+                    if(m.bossShieldCooldown===undefined) m.bossShieldCooldown=0;
+                    if(m.bossShieldCooldown<=0){
+                        bossShieldActive = true;
+                        setTimeout(()=>{ bossShieldActive = false; }, 5000);
+                        m.bossShieldCooldown = 300;
+                        addFloatingText(m.x, m.y, "🛡️ ЩИТ АКТИВИРОВАН!", "#88aaff");
+                    } else m.bossShieldCooldown--;
+                    if(m.bossRocketCooldown===undefined) m.bossRocketCooldown=0;
+                    if(m.bossRocketCooldown<=0 && !bossShieldActive){
+                        for(let r=0;r<3;r++){
+                            let angle = (Math.PI*2/3)*r + Math.random()*0.5;
+                            let speedX = Math.sin(angle)*1.5;
+                            let speedY = Math.cos(angle)*1.5;
+                            bossRockets.push({ x: m.x, y: m.y+m.radius/2, vx: speedX, vy: speedY, damage: 10, life: 120 });
+                        }
+                        m.bossRocketCooldown = 120;
+                    } else m.bossRocketCooldown--;
+                }
+                if(m.isBoss && m.bossLevel===3 && gameRunning){
+                    if(m.bossRocketCooldown===undefined) m.bossRocketCooldown=0;
+                    if(m.bossRocketCooldown<=0){
+                        let dx = shipX - m.x, dy = SHIP_Y - m.y, dist = Math.hypot(dx,dy);
+                        if(dist>0){
+                            bossRockets.push({ x: m.x, y: m.y+m.radius/2, vx: (dx/dist)*2, vy: (dy/dist)*2, damage: 8, life: 120 });
+                        }
+                        m.bossRocketCooldown = 90;
+                    } else m.bossRocketCooldown--;
+                }
+            }
+            
+            for(let i=0;i<blackHoles.length;i++){
+                let bh = blackHoles[i];
+                bh.life--;
+                if(bh.life<=0){ blackHoles.splice(i--,1); continue; }
+                for(let m of meteors){
+                    let dist = Math.hypot(m.x-bh.x, m.y-bh.y);
+                    if(dist<bh.radius){
+                        let angle = Math.atan2(m.y-bh.y, m.x-bh.x);
+                        m.x += Math.cos(angle) * 3;
+                        m.y += Math.sin(angle) * 3;
+                    }
+                }
+                let distToShip = Math.hypot(shipX-bh.x, SHIP_Y-bh.y);
+                if(distToShip<bh.radius && !shieldActive){
+                    let angle = Math.atan2(SHIP_Y-bh.y, shipX-bh.x);
+                    shipX += Math.cos(angle) * 4;
+                    shipY += Math.sin(angle) * 4;
+                    shipX = Math.min(Math.max(shipX, SHIP_RADIUS+12), canvas.width-SHIP_RADIUS-12);
+                }
+            }
+            
+            for(let i=0;i<bossRockets.length;i++){
+                let r = bossRockets[i];
+                r.x += r.vx; r.y += r.vy;
+                if(r.y>canvas.height+50 || r.y<-50 || r.x<-50 || r.x>canvas.width+50){ bossRockets.splice(i--,1); continue; }
+                if(Math.hypot(r.x-shipX, r.y-SHIP_Y)<15 && !shieldActive && !(infiniteShieldLevel>0)){
+                    let dmg = r.damage;
+                    if(infiniteShieldLevel>0) dmg = Math.max(1, Math.floor(dmg/2));
+                    currentHealth -= dmg;
+                    updateUI();
+                    bossRockets.splice(i--,1);
+                    if(currentHealth<=0) gameRunning=false;
+                }
+            }
+        }
+        
+        // ОТРИСОВКА
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle="#010008";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        for(let i=0;i<200;i++){
+            ctx.fillStyle=`rgba(255,240,200,${0.3+Math.sin(Date.now()*0.002+i)*0.2})`;
+            ctx.beginPath();
+            ctx.arc((i*311)%canvas.width, (i*131)%canvas.height, 1,0,Math.PI*2);
+            ctx.fill();
+        }
+        for(let m of meteors) drawMeteor(m);
+        drawSpaceship(shipX,SHIP_Y,SHIP_RADIUS);
+        for(let b of bullets){ ctx.beginPath(); ctx.arc(b.x,b.y,3,0,Math.PI*2); ctx.fillStyle="#ffe484"; ctx.fill(); }
+        for(let p of plasmaBullets){ ctx.beginPath(); ctx.arc(p.x,p.y,5,0,Math.PI*2); ctx.fillStyle="#44aaff"; ctx.fill(); }
+        for(let r of rockets){ ctx.beginPath(); ctx.arc(r.x,r.y,4,0,Math.PI*2); ctx.fillStyle="#ff6644"; ctx.fill(); }
+        for(let d of droneBullets){ ctx.beginPath(); ctx.arc(d.x,d.y,3,0,Math.PI*2); ctx.fillStyle="#88aaff"; ctx.fill(); }
+        for(let r of bossRockets){
+            ctx.beginPath(); ctx.arc(r.x,r.y,5,0,Math.PI*2);
+            ctx.fillStyle="#ff0000"; ctx.fill();
+            ctx.beginPath(); ctx.moveTo(r.x-8,r.y); ctx.lineTo(r.x,r.y-5); ctx.lineTo(r.x+8,r.y); ctx.lineTo(r.x,r.y+5); ctx.fillStyle="#ff8800"; ctx.fill();
+        }
+        for(let bh of blackHoles){
+            ctx.beginPath(); ctx.arc(bh.x, bh.y, bh.radius, 0, Math.PI*2);
+            ctx.fillStyle = `rgba(0,0,0,${Math.min(0.8, bh.life/100)})`;
+            ctx.fill();
+            ctx.beginPath(); ctx.arc(bh.x, bh.y, bh.radius/2, 0, Math.PI*2);
+            ctx.fillStyle = "#440044";
+            ctx.fill();
+        }
+        for(let ex of explosions){
+            ctx.beginPath(); ctx.arc(ex.x,ex.y,8+ex.life/2,0,Math.PI*2);
+            ctx.fillStyle=`rgba(230,100,20,${ex.life/15})`;
+            ctx.fill();
+        }
+        drawFloatingTexts();
+        if(slowActive){
+            ctx.fillStyle = "rgba(100,150,255,0.3)";
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+        }
+        if(!gameRunning){
+            ctx.font="bold 26px monospace";
+            ctx.fillStyle="#ffaa88";
+            ctx.fillText("💀 КОРАБЛЬ РАЗРУШЕН", canvas.width/2-150, canvas.height/2);
+            ctx.font="14px monospace";
+            ctx.fillStyle="#88aaff";
+            ctx.fillText("Купите улучшения и нажмите НОВЫЙ ПОЛЁТ", canvas.width/2-200, canvas.height/2+40);
+        }
+        ctx.beginPath(); ctx.arc(mouseX,SHIP_Y-18,12,0,Math.PI*2);
+        ctx.strokeStyle="#88ffaa"; ctx.lineWidth=2; ctx.stroke();
+        requestAnimationFrame(gameUpdate);
+    }
+    
+    loadGame();
+    initMenu();
+    resetGameSession();
+    gameUpdate();
+})();
+</script>
+</body>
+</html>
